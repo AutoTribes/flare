@@ -7,8 +7,8 @@ defmodule Flare.Accounts.Organization do
   schema "organizations" do
     field :name, :string
     field :slug, :string
-    # has_many :projects deferred to Task 2 (when Flare.Projects.Project exists)
     has_many :roles, Flare.Accounts.Role
+    has_many :projects, Flare.Projects.Project
     timestamps(type: :utc_datetime_usec)
   end
 
