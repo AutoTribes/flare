@@ -1,6 +1,6 @@
 defmodule Flare.FlagsContextTest do
   use Flare.DataCase, async: true
-  alias Flare.{Accounts, Projects, Flags, Segments, Evaluation}
+  alias Flare.{Accounts, Evaluation, Flags, Projects, Segments}
   alias Flare.Evaluation.Context
 
   setup do

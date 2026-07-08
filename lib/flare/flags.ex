@@ -1,11 +1,11 @@
 defmodule Flare.Flags do
   @moduledoc "Flags context. Owns flag CRUD, per-env settings, and ruleset assembly."
   import Ecto.Query
-  alias Flare.Repo
+  alias Flare.Evaluation.Ruleset
   alias Flare.Flags.{FeatureFlag, FeatureVariant, FlagEnvironmentSetting}
   alias Flare.Projects.Environment
+  alias Flare.Repo
   alias Flare.Segments
-  alias Flare.Evaluation.Ruleset
 
   def create_flag(%{variants: variants} = attrs) do
     attrs = Map.delete(attrs, :variants)

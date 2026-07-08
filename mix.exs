@@ -72,7 +72,9 @@ defmodule Flare.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:stream_data, "~> 1.1", only: [:test, :dev]},
-      {:murmur, "~> 2.0"}
+      {:murmur, "~> 2.0"},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]
   end
 

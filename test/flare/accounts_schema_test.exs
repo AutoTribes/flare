@@ -1,6 +1,6 @@
 defmodule Flare.AccountsSchemaTest do
   use Flare.DataCase, async: true
-  alias Flare.Accounts.{Organization, User, Role}
+  alias Flare.Accounts.{Organization, Role, User}
 
   test "organization requires slug format" do
     cs = Organization.changeset(%Organization{}, %{name: "Acme", slug: "Bad Slug"})

@@ -1,7 +1,7 @@
 defmodule Flare.Projects do
   @moduledoc "Projects context."
+  alias Flare.Projects.{Environment, Project}
   alias Flare.Repo
-  alias Flare.Projects.{Project, Environment}
 
   def create_project(attrs), do: %Project{} |> Project.changeset(attrs) |> Repo.insert()
 

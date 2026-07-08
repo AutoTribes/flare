@@ -24,7 +24,7 @@ defmodule Flare.Evaluation.HashTest do
     |> File.read!()
     |> Jason.decode!()
     |> Enum.each(fn %{"input" => input, "hash" => expected} ->
-      assert Flare.Evaluation.Hash.murmur3_32(input) == expected, "mismatch for #{inspect(input)}"
+      assert Hash.murmur3_32(input) == expected, "mismatch for #{inspect(input)}"
     end)
   end
 
@@ -33,7 +33,7 @@ defmodule Flare.Evaluation.HashTest do
     |> File.read!()
     |> Jason.decode!()
     |> Enum.each(fn f ->
-      assert Flare.Evaluation.Hash.in_rollout?(
+      assert Hash.in_rollout?(
                f["flag_key"],
                f["salt"],
                f["bucketing_key"],

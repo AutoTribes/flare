@@ -1,6 +1,7 @@
 defmodule Flare.Evaluation.RulesetTest do
   use ExUnit.Case, async: true
-  alias Flare.Evaluation.{Ruleset, Context}
+  alias Flare.Evaluation.{Context, Ruleset}
+  alias Flare.Targeting.Rule
 
   test "builds a compiled ruleset from plain maps and flattens context" do
     flags = [
@@ -58,7 +59,7 @@ defmodule Flare.Evaluation.RulesetTest do
     assert rule.id == "r1"
     assert rule.variant == "on"
     # the compiled node should match a driver
-    assert Flare.Targeting.Rule.matches?(rule.node, %{"role" => "driver"})
-    refute Flare.Targeting.Rule.matches?(rule.node, %{"role" => "rider"})
+    assert Rule.matches?(rule.node, %{"role" => "driver"})
+    refute Rule.matches?(rule.node, %{"role" => "rider"})
   end
 end

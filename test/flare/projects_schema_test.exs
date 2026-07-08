@@ -1,7 +1,7 @@
 defmodule Flare.ProjectsSchemaTest do
   use Flare.DataCase, async: true
   alias Flare.Accounts.Organization
-  alias Flare.Projects.{Project, Environment, SdkKey}
+  alias Flare.Projects.{Environment, Project, SdkKey}
 
   setup do
     {:ok, org} = Repo.insert(Organization.changeset(%Organization{}, %{name: "A", slug: "a"}))

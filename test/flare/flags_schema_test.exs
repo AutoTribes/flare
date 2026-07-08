@@ -1,8 +1,8 @@
 defmodule Flare.FlagsSchemaTest do
   use Flare.DataCase, async: true
   alias Flare.Accounts.Organization
-  alias Flare.Projects.Project
   alias Flare.Flags.FeatureFlag
+  alias Flare.Projects.Project
 
   test "flag kind validated and salt auto-generated" do
     {:ok, org} = Repo.insert(Organization.changeset(%Organization{}, %{name: "A", slug: "a"}))

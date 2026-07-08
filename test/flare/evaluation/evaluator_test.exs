@@ -1,7 +1,7 @@
 defmodule Flare.Evaluation.EvaluatorTest do
   use ExUnit.Case, async: true
   alias Flare.Evaluation
-  alias Flare.Evaluation.{Ruleset, Context}
+  alias Flare.Evaluation.{Context, Ruleset}
 
   defp ruleset(flag_overrides) do
     base = %{

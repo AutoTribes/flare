@@ -4,7 +4,7 @@ defmodule Flare.Evaluation do
   simulator, the SDK reference implementation, and any server-side evaluation.
   Pure — no I/O.
   """
-  alias Flare.Evaluation.{Ruleset, Evaluator, Decision, Context}
+  alias Flare.Evaluation.{Context, Decision, Evaluator, Ruleset}
 
   @spec evaluate(Ruleset.t(), String.t(), Context.t()) :: Decision.t()
   def evaluate(%Ruleset{flags: flags}, flag_key, %Context{} = ctx) do

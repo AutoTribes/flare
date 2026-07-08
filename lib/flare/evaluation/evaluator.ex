@@ -1,6 +1,6 @@
 defmodule Flare.Evaluation.Evaluator do
   @moduledoc "Pure evaluation. No I/O. First-match-wins."
-  alias Flare.Evaluation.{Decision, Context, Hash}
+  alias Flare.Evaluation.{Context, Decision, Hash}
   alias Flare.Targeting.Rule
 
   @spec evaluate(map() | nil, Context.t()) :: Decision.t()
