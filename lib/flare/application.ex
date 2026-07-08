@@ -15,6 +15,7 @@ defmodule Flare.Application do
       {Oban, Application.fetch_env!(:flare, Oban)},
       {Finch, name: Flare.Finch},
       {Phoenix.PubSub, name: Flare.PubSub},
+      Flare.Sync.ConnectionRegistry,
       # Start a worker by calling: Flare.Worker.start_link(arg)
       # {Flare.Worker, arg},
       # Start to serve requests, typically the last entry
