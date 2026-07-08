@@ -932,6 +932,18 @@ git commit -m "feat(flags,segments,audit): flag/variant/env-setting/version/segm
 - Create: `test/fixtures/rollout_conformance.json`
 - Test: `test/flare/evaluation/hash_test.exs`
 
+> **DECISION (supersedes the hand-rolled code below):** Do NOT hand-roll
+> MurmurHash3. Cross-language parity is the #1 spec risk; a hand-rolled hash with
+> unverified constants poisons every SDK. Instead, back `Flare.Evaluation.Hash`
+> with the audited **`murmur` hex library** (`{:murmur, "~> 2.0"}`, module
+> `Murmur`, `Murmur.hash_x86_32/1`), keeping our `bucket/3` + `in_rollout?/4`
+> interface unchanged so the impl stays swappable behind one boundary. Guard with
+> the canonical vectors `Murmur.hash_x86_32("") == 0` and
+> `Murmur.hash_x86_32("hello") == 613153351` (standard MurmurHash3_x86_32, seed 0,
+> unsigned — the same values Python `mmh3`, JS, and Dart libs produce, which is
+> exactly the cross-SDK contract). Generate fixtures FROM this verified impl. The
+> hand-rolled module below is retained only as historical context.
+
 - [ ] **Step 1: Write MurmurHash3 (x86 32-bit) and bucketing**
 
 Create `lib/flare/evaluation/hash.ex`:
