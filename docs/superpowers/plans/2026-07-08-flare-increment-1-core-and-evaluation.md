@@ -184,8 +184,12 @@ defmodule Flare.Accounts.Organization do
   schema "organizations" do
     field :name, :string
     field :slug, :string
-    has_many :projects, Flare.Projects.Project
     has_many :roles, Flare.Accounts.Role
+    # NOTE: `has_many :projects` is intentionally NOT declared here. Ecto's
+    # surface_changes/3 walks ALL declared associations on every Repo.insert and
+    # calls __schema__ on the associated module, so referencing the not-yet-created
+    # Flare.Projects.Project would crash inserts. Task 2 adds this line back once
+    # that module exists.
     timestamps(type: :utc_datetime_usec)
   end
 
@@ -451,6 +455,16 @@ defmodule Flare.Projects.Project do
   end
 end
 ```
+
+**Also (deferred from Task 1):** now that `Flare.Projects.Project` exists, add the
+`has_many :projects` association back to `Organization`. In
+`lib/flare/accounts/organization.ex`, inside the `schema` block, add:
+
+```elixir
+    has_many :projects, Flare.Projects.Project
+```
+(next to the existing `has_many :roles, Flare.Accounts.Role`). Verify org inserts
+still pass afterward.
 
 Create `lib/flare/projects/environment.ex`:
 
