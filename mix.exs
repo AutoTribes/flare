@@ -73,6 +73,10 @@ defmodule Flare.MixProject do
       {:bandit, "~> 1.5"},
       {:stream_data, "~> 1.1", only: [:test, :dev]},
       {:murmur, "~> 2.0"},
+      {:redix, "~> 1.5"},
+      {:oban, "~> 2.18"},
+      {:finch, "~> 0.19"},
+      {:argon2_elixir, "~> 4.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false}
     ]

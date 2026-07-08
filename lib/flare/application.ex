@@ -11,6 +11,9 @@ defmodule Flare.Application do
       FlareWeb.Telemetry,
       Flare.Repo,
       {DNSCluster, query: Application.get_env(:flare, :dns_cluster_query) || :ignore},
+      {Redix, {Application.fetch_env!(:flare, :redis_url), [name: :flare_redix]}},
+      {Oban, Application.fetch_env!(:flare, Oban)},
+      {Finch, name: Flare.Finch},
       {Phoenix.PubSub, name: Flare.PubSub},
       # Start a worker by calling: Flare.Worker.start_link(arg)
       # {Flare.Worker, arg},

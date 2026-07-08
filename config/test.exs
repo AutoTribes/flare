@@ -13,6 +13,11 @@ config :flare, Flare.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
+# Use DB index 1 to isolate tests from dev's Redis data
+config :flare, :redis_url, "redis://redis:6379/1"
+
+config :flare, Oban, testing: :manual
+
 # We don't run a server during test. If one is required,
 # you can enable the server option below.
 config :flare, FlareWeb.Endpoint,

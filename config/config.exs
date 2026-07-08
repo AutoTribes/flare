@@ -11,6 +11,12 @@ config :flare,
   ecto_repos: [Flare.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :flare, :redis_url, "redis://redis:6379"
+
+config :flare, Oban,
+  repo: Flare.Repo,
+  queues: [audit: 10, events: 20]
+
 # Configure the endpoint
 config :flare, FlareWeb.Endpoint,
   url: [host: "localhost"],

@@ -73,6 +73,8 @@ if config_env() == :prod do
 
   config :flare, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  config :flare, :redis_url, System.get_env("REDIS_URL") || "redis://localhost:6379"
+
   config :flare, FlareWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
