@@ -76,4 +76,48 @@ defmodule Flare.Flags do
       bucket_by: Map.get(fs.rollout, "bucket_by", "user_id")
     }
   end
+
+  @doc "JSON-serializable ruleset payload for SDKs. key_kind :server | :client | :mobile."
+  def ruleset_payload(%Environment{} = env, key_kind \\ :server) do
+    project_id = Repo.one!(from e in Environment, where: e.id == ^env.id, select: e.project_id)
+    segments = Segments.segment_map(project_id)
+
+    base =
+      from(fs in FlagEnvironmentSetting,
+        join: f in FeatureFlag,
+        on: f.id == fs.feature_flag_id,
+        where: fs.environment_id == ^env.id and is_nil(f.archived_at),
+        preload: [feature_flag: :variants]
+      )
+
+    query =
+      if key_kind in [:client, :mobile] do
+        from([fs, f] in base, where: f.client_available == true)
+      else
+        base
+      end
+
+    flags = query |> Repo.all() |> Enum.map(&to_flag_payload/1)
+
+    %{"version" => env.ruleset_version, "flags" => flags, "segments" => segments}
+  end
+
+  defp to_flag_payload(%FlagEnvironmentSetting{feature_flag: flag} = fs) do
+    variants =
+      for v <- flag.variants, into: %{}, do: {v.key, v.value["v"]}
+
+    %{
+      "key" => flag.key,
+      "kind" => flag.kind,
+      "salt" => flag.rollout_salt,
+      "enabled" => fs.enabled,
+      "rules" => fs.rules,
+      "rollout" => fs.rollout,
+      "default_variant" => fs.default_variant_key,
+      "off_variant" => fs.off_variant_key,
+      "variants" => variants,
+      "targets" => Map.get(fs.rules, "targets", %{}),
+      "bucket_by" => Map.get(fs.rollout, "bucket_by", "user_id")
+    }
+  end
 end

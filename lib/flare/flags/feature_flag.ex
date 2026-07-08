@@ -12,6 +12,7 @@ defmodule Flare.Flags.FeatureFlag do
     field :tags, {:array, :string}, default: []
     field :rollout_salt, :string
     field :archived_at, :utc_datetime_usec
+    field :client_available, :boolean, default: true
     belongs_to :project, Flare.Projects.Project
     belongs_to :owner, Flare.Accounts.User
     has_many :variants, Flare.Flags.FeatureVariant
@@ -28,7 +29,8 @@ defmodule Flare.Flags.FeatureFlag do
       :project_id,
       :owner_id,
       :rollout_salt,
-      :archived_at
+      :archived_at,
+      :client_available
     ])
     |> validate_required([:key, :kind, :project_id])
     |> validate_inclusion(:kind, @kinds)

@@ -33,6 +33,29 @@ defmodule Flare.Evaluation.Ruleset do
     %__MODULE__{version: version, flags: compiled}
   end
 
+  @doc "Build a compiled Ruleset from a decoded JSON payload (string keys)."
+  @spec from_payload(map()) :: %__MODULE__{}
+  def from_payload(%{"version" => v, "flags" => flags, "segments" => segments}) do
+    atom_flags =
+      Enum.map(flags, fn f ->
+        %{
+          key: f["key"],
+          kind: f["kind"],
+          salt: f["salt"],
+          enabled: f["enabled"],
+          rules: f["rules"] || %{},
+          rollout: f["rollout"] || %{},
+          default_variant: f["default_variant"],
+          off_variant: f["off_variant"],
+          variants: f["variants"] || %{},
+          targets: f["targets"] || %{},
+          bucket_by: f["bucket_by"] || "user_id"
+        }
+      end)
+
+    build(atom_flags, segments, v)
+  end
+
   defp compile_rules(rules, segments) when is_map(rules) do
     case rules do
       %{"list" => list} when is_list(list) ->
