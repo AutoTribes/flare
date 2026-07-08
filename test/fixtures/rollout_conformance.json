@@ -1,0 +1,6 @@
+[
+  {"flag_key": "payment_v2", "salt": "salt123", "bucketing_key": "user-abc", "percentage": 50, "in_rollout": true},
+  {"flag_key": "payment_v2", "salt": "salt123", "bucketing_key": "user-xyz", "percentage": 50, "in_rollout": true},
+  {"flag_key": "search_algorithm", "salt": "s2", "bucketing_key": "user-1", "percentage": 25, "in_rollout": false},
+  {"flag_key": "search_algorithm", "salt": "s2", "bucketing_key": "user-2", "percentage": 75, "in_rollout": true}
+]

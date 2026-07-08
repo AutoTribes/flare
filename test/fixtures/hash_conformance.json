@@ -1,0 +1,7 @@
+[
+  {"input": "", "hash": 0},
+  {"input": "0", "hash": 3530670207},
+  {"input": "hello", "hash": 613153351},
+  {"input": "payment_v2:salt123:user-abc", "hash": 2299836542},
+  {"input": "driver_navigation:s:org-42", "hash": 1194931034}
+]

@@ -71,7 +71,8 @@ defmodule Flare.MixProject do
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
-      {:stream_data, "~> 1.1", only: [:test, :dev]}
+      {:stream_data, "~> 1.1", only: [:test, :dev]},
+      {:murmur, "~> 2.0"}
     ]
   end
 
