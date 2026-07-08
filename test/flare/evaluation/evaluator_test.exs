@@ -76,6 +76,32 @@ defmodule Flare.Evaluation.EvaluatorTest do
     assert d.reason == :flag_not_found
   end
 
+  test "overlapping target lists resolve deterministically by sorted variant key (I3)" do
+    rs = ruleset(%{targets: %{"zzz" => ["u1"], "aaa" => ["u1"]}})
+    d = Evaluation.evaluate(rs, "f", Context.new(%{user_id: "u1"}))
+    assert d.variant == "aaa"
+  end
+
+  test "numeric target id matches string user_id" do
+    rs = ruleset(%{targets: %{"off" => [123]}})
+    d = Evaluation.evaluate(rs, "f", Context.new(%{user_id: "123"}))
+    assert d.variant == "off"
+  end
+
+  test "rollout true-branch and boundary" do
+    # 100% -> everyone gets the rollout variant
+    rs = ruleset(%{rollout: %{"variant" => "on", "fallback" => "off", "percentage" => 100}})
+    d = Evaluation.evaluate(rs, "f", Context.new(%{user_id: "u"}))
+    assert d.variant == "on"
+    assert d.reason == :rollout
+  end
+
+  test "rollout with missing variant/fallback keys falls back to flag defaults (M3)" do
+    rs = ruleset(%{rollout: %{"percentage" => 0}})
+    d = Evaluation.evaluate(rs, "f", Context.new(%{user_id: "u"}))
+    refute is_nil(d.variant)
+  end
+
   test "evaluation is fast (< 1ms average over 10k iterations)" do
     rules = %{
       "list" => [

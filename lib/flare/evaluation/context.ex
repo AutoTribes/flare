@@ -1,8 +1,14 @@
 defmodule Flare.Evaluation.Context do
-  @moduledoc "Evaluation context. Flattens known attrs + custom into one string-keyed map."
-  defstruct attrs: %{}, bucketing_keys: %{}
+  @moduledoc """
+  Evaluation context. Flattens known attrs + custom into one string-keyed map.
 
-  @type t :: %__MODULE__{attrs: map(), bucketing_keys: map()}
+  Bucketing keys should be strings or integers; canonical stringification:
+  integers render without a decimal so all SDKs agree. (Full float parity is
+  out of scope — document it.)
+  """
+  defstruct attrs: %{}
+
+  @type t :: %__MODULE__{attrs: map()}
 
   @known ~w(user_id email country city role app_version device operating_system organization)a
 
@@ -20,9 +26,20 @@ defmodule Flare.Evaluation.Context do
     custom = Map.get(input, :custom) || Map.get(input, "custom") || %{}
     custom = for {k, v} <- custom, into: %{}, do: {to_string(k), v}
 
-    %__MODULE__{attrs: Map.merge(custom, known), bucketing_keys: known}
+    %__MODULE__{attrs: Map.merge(custom, known)}
   end
 
   @spec bucketing_key(%__MODULE__{}, String.t()) :: String.t()
-  def bucketing_key(%__MODULE__{attrs: attrs}, by), do: to_string(Map.get(attrs, by, ""))
+  def bucketing_key(%__MODULE__{attrs: attrs}, by) do
+    attrs |> Map.get(by, "") |> canonical_str()
+  end
+
+  defp canonical_str(v) when is_integer(v), do: Integer.to_string(v)
+  defp canonical_str(v) when is_binary(v), do: v
+
+  defp canonical_str(v) when is_float(v) do
+    if trunc(v) == v, do: Integer.to_string(trunc(v)), else: to_string(v)
+  end
+
+  defp canonical_str(v), do: to_string(v)
 end

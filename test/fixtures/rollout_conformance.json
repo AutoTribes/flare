@@ -1,6 +1,9 @@
 [
-  {"flag_key": "payment_v2", "salt": "salt123", "bucketing_key": "user-abc", "percentage": 50, "in_rollout": true},
-  {"flag_key": "payment_v2", "salt": "salt123", "bucketing_key": "user-xyz", "percentage": 50, "in_rollout": true},
-  {"flag_key": "search_algorithm", "salt": "s2", "bucketing_key": "user-1", "percentage": 25, "in_rollout": false},
-  {"flag_key": "search_algorithm", "salt": "s2", "bucketing_key": "user-2", "percentage": 75, "in_rollout": true}
+  {"flag_key": "payment_v2", "salt": "salt123", "bucketing_key": "user-abc", "percentage": 50, "expected_bucket": 36.542, "in_rollout": true},
+  {"flag_key": "payment_v2", "salt": "salt123", "bucketing_key": "user-xyz", "percentage": 50, "expected_bucket": 0.502, "in_rollout": true},
+  {"flag_key": "search_algorithm", "salt": "s2", "bucketing_key": "user-1", "percentage": 25, "expected_bucket": 92.625, "in_rollout": false},
+  {"flag_key": "search_algorithm", "salt": "s2", "bucketing_key": "user-2", "percentage": 75, "expected_bucket": 47.254, "in_rollout": true},
+  {"flag_key": "boundary_test", "salt": "b1", "bucketing_key": "user-boundary", "percentage": 67.979, "expected_bucket": 67.979, "in_rollout": false},
+  {"flag_key": "utf8_test", "salt": "u1", "bucketing_key": "usér-café", "percentage": 95, "expected_bucket": 94.559, "in_rollout": true},
+  {"flag_key": "int_test", "salt": "i1", "bucketing_key": "12345", "percentage": 2, "expected_bucket": 1.216, "in_rollout": true}
 ]

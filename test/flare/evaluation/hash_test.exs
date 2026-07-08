@@ -33,6 +33,9 @@ defmodule Flare.Evaluation.HashTest do
     |> File.read!()
     |> Jason.decode!()
     |> Enum.each(fn f ->
+      assert Hash.bucket(f["flag_key"], f["salt"], f["bucketing_key"]) == f["expected_bucket"],
+             "bucket mismatch for #{inspect(f)}"
+
       assert Hash.in_rollout?(
                f["flag_key"],
                f["salt"],

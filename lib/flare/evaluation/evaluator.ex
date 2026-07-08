@@ -24,12 +24,17 @@ defmodule Flare.Evaluation.Evaluator do
   end
 
   defp target_variant(%{targets: targets}, ctx) do
-    uid = Map.get(ctx.attrs, "user_id")
+    uid = ctx.attrs |> Map.get("user_id") |> to_string_or_nil()
 
-    Enum.find_value(targets, fn {vk, ids} ->
-      if uid && uid in ids, do: vk, else: nil
+    targets
+    |> Enum.sort_by(fn {vk, _ids} -> vk end)
+    |> Enum.find_value(fn {vk, ids} ->
+      if uid && uid in Enum.map(ids, &to_string/1), do: vk, else: nil
     end)
   end
+
+  defp to_string_or_nil(nil), do: nil
+  defp to_string_or_nil(v), do: to_string(v)
 
   defp rule_match(%{compiled_rules: rules}, ctx) do
     Enum.find(rules, fn r -> Rule.matches?(r.node, ctx.attrs) end)
@@ -40,7 +45,11 @@ defmodule Flare.Evaluation.Evaluator do
     bucket = Hash.bucket(flag.key, flag.salt, key)
     pct = rollout["percentage"] || 0
 
-    chosen = if bucket < pct, do: rollout["variant"], else: rollout["fallback"]
+    chosen =
+      if bucket < pct,
+        do: rollout["variant"] || flag.default_variant,
+        else: rollout["fallback"] || flag.off_variant
+
     variant(flag, chosen, :rollout, nil, bucket)
   end
 
