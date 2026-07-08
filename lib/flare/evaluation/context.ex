@@ -2,6 +2,8 @@ defmodule Flare.Evaluation.Context do
   @moduledoc "Evaluation context. Flattens known attrs + custom into one string-keyed map."
   defstruct attrs: %{}, bucketing_keys: %{}
 
+  @type t :: %__MODULE__{attrs: map(), bucketing_keys: map()}
+
   @known ~w(user_id email country city role app_version device operating_system organization)a
 
   @spec new(map()) :: %__MODULE__{}

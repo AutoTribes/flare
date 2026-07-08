@@ -8,6 +8,8 @@ defmodule Flare.Evaluation.Ruleset do
 
   defstruct version: 0, flags: %{}
 
+  @type t :: %__MODULE__{version: integer(), flags: map()}
+
   @spec build([map()], map(), integer()) :: %__MODULE__{}
   def build(flags, segments, version) do
     compiled =
