@@ -1,11 +1,13 @@
 defmodule Flare.Flags do
   @moduledoc "Flags context. Owns flag CRUD, per-env settings, and ruleset assembly."
   import Ecto.Query
+  alias Flare.Audit
   alias Flare.Evaluation.Ruleset
-  alias Flare.Flags.{FeatureFlag, FeatureVariant, FlagEnvironmentSetting}
+  alias Flare.Flags.{FeatureFlag, FeatureVariant, FlagEnvironmentSetting, FlagVersion}
   alias Flare.Projects.Environment
   alias Flare.Repo
   alias Flare.Segments
+  alias Flare.Sync.RulesetCache
 
   def create_flag(%{variants: variants} = attrs) do
     attrs = Map.delete(attrs, :variants)
@@ -119,5 +121,87 @@ defmodule Flare.Flags do
       "targets" => Map.get(fs.rules, "targets", %{}),
       "bucket_by" => Map.get(fs.rollout, "bucket_by", "user_id")
     }
+  end
+
+  @doc """
+  Update a flag's per-environment setting and publish the change:
+  bump ruleset_version, write a flag_versions row, enqueue an audit log,
+  refresh the Redis cache, and broadcast {:ruleset_updated, version}.
+  Returns {:ok, new_version}.
+  """
+  def update_env_setting_and_publish(
+        %FeatureFlag{} = flag,
+        %Environment{} = env,
+        attrs,
+        actor \\ nil
+      ) do
+    result =
+      Repo.transaction(fn ->
+        {:ok, setting} = upsert_env_setting(flag, env, attrs)
+
+        {1, _} =
+          from(e in Environment, where: e.id == ^env.id)
+          |> Repo.update_all(inc: [ruleset_version: 1])
+
+        new_env = Repo.get!(Environment, env.id)
+        version = new_env.ruleset_version
+        snapshot = setting_snapshot(setting)
+
+        {:ok, _fv} =
+          %FlagVersion{}
+          |> FlagVersion.changeset(%{
+            feature_flag_id: flag.id,
+            environment_id: env.id,
+            version: version,
+            snapshot: snapshot,
+            change_type: "update",
+            changed_by_id: actor && actor.id
+          })
+          |> Repo.insert()
+
+        {:ok, _job} =
+          Audit.log_async(%{
+            organization_id: org_id_for_env(env),
+            actor_id: actor && actor.id,
+            action: "flag.setting.updated",
+            entity_type: "flag_environment_setting",
+            entity_id: setting.id,
+            after: snapshot,
+            metadata: %{"flag_key" => flag.key}
+          })
+
+        {new_env, version}
+      end)
+
+    case result do
+      {:ok, {new_env, version}} ->
+        RulesetCache.put(new_env, :server)
+        RulesetCache.put(new_env, :client)
+        Phoenix.PubSub.broadcast(Flare.PubSub, "env:#{env.id}", {:ruleset_updated, version})
+        {:ok, version}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp setting_snapshot(setting) do
+    %{
+      "enabled" => setting.enabled,
+      "rules" => setting.rules,
+      "rollout" => setting.rollout,
+      "default_variant_key" => setting.default_variant_key,
+      "off_variant_key" => setting.off_variant_key
+    }
+  end
+
+  defp org_id_for_env(%Environment{id: env_id}) do
+    Repo.one!(
+      from e in Environment,
+        join: p in Flare.Projects.Project,
+        on: p.id == e.project_id,
+        where: e.id == ^env_id,
+        select: p.organization_id
+    )
   end
 end
