@@ -17,7 +17,11 @@ defmodule Flare.SDK.Client do
     :version,
     :poll_interval,
     default_ctx: %{},
-    subscribers: []
+    subscribers: [],
+    stream_task: nil,
+    stream_ref: nil,
+    reconnects: 0,
+    reconnect_backoff: 1_000
   ]
 
   # --- lifecycle ---
@@ -30,7 +34,8 @@ defmodule Flare.SDK.Client do
       sdk_key: opts[:sdk_key],
       mode: opts[:mode] || :streaming,
       default_ctx: opts[:context] || %{},
-      poll_interval: opts[:poll_interval] || 30_000
+      poll_interval: opts[:poll_interval] || 30_000,
+      reconnect_backoff: opts[:reconnect_backoff] || 1_000
     }
 
     state =
@@ -56,6 +61,7 @@ defmodule Flare.SDK.Client do
   def subscribe(pid, subscriber), do: GenServer.call(pid, {:subscribe, subscriber})
   def offline_mode(pid), do: GenServer.call(pid, :offline_mode)
   def bootstrap(pid, payload), do: GenServer.call(pid, {:bootstrap, payload})
+  def stream_info(pid), do: GenServer.call(pid, :__stream_info)
 
   # --- callbacks ---
   @impl true
@@ -73,6 +79,10 @@ defmodule Flare.SDK.Client do
     do: {:reply, :ok, load_and_notify(state, payload)}
 
   def handle_call(:offline_mode, _from, state), do: {:reply, :ok, %{state | mode: :offline}}
+
+  def handle_call(:__stream_info, _from, state) do
+    {:reply, %{reconnects: state.reconnects, stream_task: state.stream_task}, state}
+  end
 
   def handle_call(:refresh, _from, state) do
     case poll_fetch(state) do
@@ -96,6 +106,26 @@ defmodule Flare.SDK.Client do
 
   # {:sse_payload, payload} messages come from the streaming task (Task 2.11 exercises this)
   def handle_info({:sse_payload, payload}, state), do: {:noreply, load_and_notify(state, payload)}
+
+  def handle_info(
+        {:DOWN, ref, :process, _pid, _reason},
+        %{stream_ref: ref, mode: :streaming} = state
+      ) do
+    Process.send_after(self(), :reconnect_stream, state.reconnect_backoff)
+    {:noreply, %{state | stream_task: nil, stream_ref: nil}}
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, %{stream_ref: ref} = state) do
+    # not streaming anymore (e.g. offline_mode) — do not reconnect
+    {:noreply, %{state | stream_task: nil, stream_ref: nil}}
+  end
+
+  def handle_info(:reconnect_stream, %{mode: :streaming} = state) do
+    {:noreply, %{start_stream(state) | reconnects: state.reconnects + 1}}
+  end
+
+  def handle_info(:reconnect_stream, state), do: {:noreply, state}
+
   def handle_info(_msg, state), do: {:noreply, state}
 
   # --- internals ---
@@ -154,29 +184,31 @@ defmodule Flare.SDK.Client do
     end
   end
 
-  # Streaming: spawn a task that opens the SSE stream and forwards {:sse_payload, payload}.
-  # Fully exercised in Task 2.11 with a real server; kept minimal here.
+  # Streaming: spawn a monitored process that opens the SSE stream and forwards
+  # {:sse_payload, payload}. spawn_monitor (not spawn_link) means a dying stream
+  # task can never crash the client GenServer; the DOWN message drives a
+  # backoff reconnect instead (see handle_info/2 above).
   defp start_stream(%{base_url: nil} = state), do: state
 
   defp start_stream(state) do
     parent = self()
     url = "#{state.base_url}/sdk/stream"
-    headers = [{"authorization", "Bearer #{state.sdk_key}"}]
-    last = state.version
+    key = state.sdk_key
+    version = state.version
 
-    headers = if last, do: [{"last-event-id", to_string(last)} | headers], else: headers
-
-    spawn_link(fn -> stream_loop(parent, url, headers) end)
-    state
+    {pid, ref} = spawn_monitor(fn -> run_stream(parent, url, key, version) end)
+    %{state | stream_task: pid, stream_ref: ref}
   end
 
-  defp stream_loop(parent, url, headers) do
+  defp run_stream(parent, url, key, version) do
+    headers = [{"authorization", "Bearer #{key}"}]
+    headers = if version, do: [{"last-event-id", to_string(version)} | headers], else: headers
     req = Finch.build(:get, url, headers)
 
     Finch.stream(req, Flare.Finch, "", fn
       {:data, chunk}, acc ->
         {events, rest} = parse_sse(acc <> chunk)
-        Enum.each(events, fn data -> send(parent, {:sse_payload, Jason.decode!(data)}) end)
+        Enum.each(events, fn data -> forward_event(parent, data) end)
         rest
 
       _other, acc ->
@@ -184,6 +216,15 @@ defmodule Flare.SDK.Client do
     end)
   rescue
     _ -> :ok
+  catch
+    _, _ -> :ok
+  end
+
+  defp forward_event(parent, data) do
+    case Jason.decode(data) do
+      {:ok, payload} -> send(parent, {:sse_payload, payload})
+      {:error, _} -> :ok
+    end
   end
 
   # Parse complete SSE events (separated by blank line); return {list_of_data_strings, remainder}
@@ -204,6 +245,7 @@ defmodule Flare.SDK.Client do
     |> String.split("\n")
     |> Enum.find_value(fn
       "data: " <> d -> d
+      "data:" <> d -> d
       _ -> nil
     end)
   end

@@ -95,4 +95,40 @@ defmodule Flare.SDK.ClientTest do
     c = offline_client()
     assert :ok = SDK.offline_mode(c)
   end
+
+  test "killing a client's stream task does not crash the client (spawn_monitor)" do
+    # base_url points nowhere; the stream task will fail fast and the client must survive + keep evaluating offline data
+    {:ok, c} =
+      Flare.SDK.start_link(
+        mode: :streaming,
+        base_url: "http://127.0.0.1:1",
+        sdk_key: "x.y",
+        bootstrap: %{
+          "version" => 1,
+          "segments" => %{},
+          "flags" => [
+            %{
+              "key" => "f",
+              "kind" => "boolean",
+              "salt" => "s",
+              "enabled" => true,
+              "rules" => %{},
+              "rollout" => %{},
+              "default_variant" => "on",
+              "off_variant" => "off",
+              "variants" => %{"on" => true, "off" => false},
+              "targets" => %{},
+              "bucket_by" => "user_id"
+            }
+          ]
+        },
+        reconnect_backoff: 50
+      )
+
+    # even though streaming fails to connect, local eval from bootstrap works and the client stays alive
+    assert Flare.SDK.variation(c, "f", %{}) == true
+    Process.sleep(150)
+    assert Process.alive?(c)
+    assert Flare.SDK.variation(c, "f", %{}) == true
+  end
 end

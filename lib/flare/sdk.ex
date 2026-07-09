@@ -11,4 +11,5 @@ defmodule Flare.SDK do
   defdelegate subscribe(pid, subscriber), to: Client
   defdelegate offline_mode(pid), to: Client
   defdelegate bootstrap(pid, payload), to: Client
+  defdelegate stream_info(pid), to: Client
 end

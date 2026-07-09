@@ -106,4 +106,37 @@ defmodule Flare.E2ESyncTest do
 
     assert eventually(fn -> SDK.variation(c, "payment_v2", %{}) == false end, 8000)
   end
+
+  test "STREAMING: SDK auto-reconnects after the stream task is killed, without crashing the client",
+       %{env: env, flag: flag, token: token} do
+    {:ok, c} =
+      SDK.start_link(
+        base_url: @base,
+        sdk_key: token,
+        mode: :streaming,
+        context: %{user_id: "u1"},
+        reconnect_backoff: 50
+      )
+
+    assert eventually(fn -> SDK.variation(c, "payment_v2", %{}) == true end)
+
+    %{stream_task: pid, reconnects: r0} = SDK.stream_info(c)
+    assert is_pid(pid)
+
+    # Kill the live stream task; the client (spawn_monitor, not link) must survive and reconnect.
+    Process.exit(pid, :kill)
+    assert eventually(fn -> SDK.stream_info(c).reconnects > r0 end, 5000)
+    assert Process.alive?(c)
+
+    # A publish after reconnection must still propagate over the NEW stream.
+    {:ok, _v} =
+      Flags.update_env_setting_and_publish(
+        flag,
+        env,
+        %{enabled: true, default_variant_key: "off", off_variant_key: "off"},
+        nil
+      )
+
+    assert eventually(fn -> SDK.variation(c, "payment_v2", %{}) == false end, 8000)
+  end
 end
