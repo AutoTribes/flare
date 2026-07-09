@@ -31,6 +31,26 @@ defmodule Flare.Flags do
     end)
   end
 
+  def list_flags(project_id) do
+    Repo.all(
+      from f in FeatureFlag,
+        where: f.project_id == ^project_id and is_nil(f.archived_at),
+        order_by: [asc: f.key]
+    )
+  end
+
+  def get_flag(id), do: Repo.get(FeatureFlag, id)
+
+  def update_flag(%FeatureFlag{} = flag, attrs) do
+    flag |> FeatureFlag.changeset(attrs) |> Repo.update()
+  end
+
+  def archive_flag(%FeatureFlag{} = flag) do
+    flag
+    |> FeatureFlag.changeset(%{archived_at: DateTime.utc_now() |> DateTime.truncate(:second)})
+    |> Repo.update()
+  end
+
   def upsert_env_setting(%FeatureFlag{id: fid}, %Environment{id: eid}, attrs) do
     attrs = Map.merge(attrs, %{feature_flag_id: fid, environment_id: eid})
 

@@ -1,13 +1,28 @@
 defmodule Flare.Projects do
   @moduledoc "Projects context."
+  import Ecto.Query
   alias Flare.Accounts.Organization
   alias Flare.Projects.{ApiKey, Environment, Project, SdkKey}
   alias Flare.Repo
 
   def create_project(attrs), do: %Project{} |> Project.changeset(attrs) |> Repo.insert()
 
+  def list_projects(org_id) do
+    Repo.all(from p in Project, where: p.organization_id == ^org_id, order_by: [asc: p.name])
+  end
+
+  def get_project(org_id, id) do
+    Repo.get_by(Project, id: id, organization_id: org_id)
+  end
+
   def create_environment(attrs),
     do: %Environment{} |> Environment.changeset(attrs) |> Repo.insert()
+
+  def list_environments(project_id) do
+    Repo.all(from e in Environment, where: e.project_id == ^project_id, order_by: [asc: e.name])
+  end
+
+  def get_environment(id), do: Repo.get(Environment, id)
 
   def get_environment!(id), do: Repo.get!(Environment, id)
 

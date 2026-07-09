@@ -20,6 +20,11 @@ defmodule FlareWeb.Router do
     plug FlareWeb.Plugs.SdkAuth
   end
 
+  pipeline :mgmt_api do
+    plug :accepts, ["json"]
+    plug FlareWeb.Plugs.ApiAuth
+  end
+
   scope "/", FlareWeb do
     pipe_through :browser
 
@@ -31,6 +36,19 @@ defmodule FlareWeb.Router do
 
     get "/ruleset", SdkController, :ruleset
     get "/stream", SdkController, :stream
+  end
+
+  scope "/api", FlareWeb.Api do
+    pipe_through :mgmt_api
+
+    get "/projects", ProjectController, :index
+    post "/projects", ProjectController, :create
+    post "/projects/:project_id/environments", EnvironmentController, :create
+    get "/projects/:project_id/flags", FlagController, :index
+    post "/projects/:project_id/flags", FlagController, :create
+    patch "/flags/:id", FlagController, :update
+    delete "/flags/:id", FlagController, :archive
+    put "/flags/:flag_id/environments/:environment_id/settings", SettingController, :update
   end
 
   # Other scopes may use custom stacks.
