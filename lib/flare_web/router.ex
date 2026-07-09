@@ -14,10 +14,23 @@ defmodule FlareWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # No :accepts plug here — SSE clients send `Accept: text/event-stream`,
+  # which the :accepts plug would reject with 406.
+  pipeline :sdk_api do
+    plug FlareWeb.Plugs.SdkAuth
+  end
+
   scope "/", FlareWeb do
     pipe_through :browser
 
     get "/", PageController, :home
+  end
+
+  scope "/sdk", FlareWeb do
+    pipe_through :sdk_api
+
+    get "/ruleset", SdkController, :ruleset
+    get "/stream", SdkController, :stream
   end
 
   # Other scopes may use custom stacks.
