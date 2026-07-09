@@ -20,7 +20,10 @@ if System.get_env("PHX_SERVER") do
   config :flare, FlareWeb.Endpoint, server: true
 end
 
-config :flare, FlareWeb.Endpoint, http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+if config_env() == :prod do
+  config :flare, FlareWeb.Endpoint,
+    http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+end
 
 if config_env() == :dev do
   # Reload browser tabs when matching files change.

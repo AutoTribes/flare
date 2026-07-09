@@ -18,12 +18,12 @@ config :flare, :redis_url, "redis://redis:6379/1"
 
 config :flare, Oban, testing: :manual
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
+# We run a real server during test so end-to-end (e2e) tests can exercise
+# the SDK over real HTTP, including live SSE streaming.
 config :flare, FlareWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "8dg1p6Lllu3u/oDVkXOLzzTsjhCUkrY+HVg6QV326jdPRzSdRtrtzKVjrGl+MNYR",
-  server: false
+  server: true
 
 # Print only warnings and errors during test
 config :logger, level: :warning
