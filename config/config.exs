@@ -13,6 +13,10 @@ config :flare,
 
 config :flare, :redis_url, "redis://redis:6379"
 
+# Fixed-window rate limiting defaults for the :sdk and :api pipelines
+# (FlareWeb.Plugs.RateLimit). Set high so normal test/dev traffic never trips it.
+config :flare, rate_limit: 300, rate_limit_window: 60
+
 config :flare, Oban,
   repo: Flare.Repo,
   queues: [audit: 10, events: 20]

@@ -18,11 +18,13 @@ defmodule FlareWeb.Router do
   # which the :accepts plug would reject with 406.
   pipeline :sdk_api do
     plug FlareWeb.Plugs.SdkAuth
+    plug FlareWeb.Plugs.RateLimit
   end
 
   pipeline :mgmt_api do
     plug :accepts, ["json"]
     plug FlareWeb.Plugs.ApiAuth
+    plug FlareWeb.Plugs.RateLimit
   end
 
   scope "/", FlareWeb do
