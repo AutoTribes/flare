@@ -34,10 +34,13 @@ defmodule FlareWeb.SdkController do
       |> put_resp_header("connection", "keep-alive")
       |> send_chunked(200)
 
-    conn = maybe_catch_up(conn, env, kind, client_version)
-
     conn_id = Base.url_encode64(:crypto.strong_rand_bytes(9), padding: false)
 
+    # Subscribe BEFORE catch-up: if we read-then-subscribe, a publish landing in
+    # between is lost forever (the catch-up read misses it and we were never
+    # subscribed to receive the broadcast). Subscribing first can cause a
+    # duplicate event (catch-up + a live event for the same version) — that's
+    # fine, SDK reloads are idempotent.
     {:ok, _pid} =
       SSEHandler.start_link(
         conn_owner: self(),
@@ -46,6 +49,8 @@ defmodule FlareWeb.SdkController do
         env_id: env.id,
         last_version: env.ruleset_version
       )
+
+    conn = maybe_catch_up(conn, env, kind, client_version)
 
     stream_loop(conn, env, kind)
   end

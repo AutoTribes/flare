@@ -29,7 +29,9 @@ defmodule FlareWeb.Plugs.RateLimit do
     key = "flare:rl:#{id}:#{bucket}"
 
     count = Flare.Redis.command!(["INCR", key])
-    if count == 1, do: Flare.Redis.command!(["EXPIRE", key, window])
+    # Always (re)set the TTL — idempotent, and guarantees the key can never get
+    # stuck without an expiry if the count==1 write was ever missed.
+    Flare.Redis.command!(["EXPIRE", key, window + 1])
 
     if count > limit do
       conn

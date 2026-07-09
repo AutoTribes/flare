@@ -6,7 +6,8 @@ defmodule FlareWeb.Api.SettingController do
   def update(conn, %{"flag_id" => flag_id, "environment_id" => env_id} = params) do
     with %{} = flag <- Flags.get_flag(flag_id),
          %{} = _proj <- Projects.get_project(conn.assigns.organization_id, flag.project_id),
-         %{} = env <- Projects.get_environment(env_id) do
+         %{} = env <- Projects.get_environment(env_id),
+         true <- env.project_id == flag.project_id do
       attrs =
         Map.take(params, ["enabled", "rules", "rollout", "default_variant_key", "off_variant_key"])
 

@@ -1,5 +1,6 @@
 defmodule Flare.Flags do
   @moduledoc "Flags context. Owns flag CRUD, per-env settings, and ruleset assembly."
+  require Logger
   import Ecto.Query
   alias Flare.Audit
   alias Flare.Evaluation.Ruleset
@@ -99,10 +100,18 @@ defmodule Flare.Flags do
     }
   end
 
-  @doc "JSON-serializable ruleset payload for SDKs. key_kind :server | :client | :mobile."
+  @doc """
+  JSON-serializable ruleset payload for SDKs. key_kind :server | :client | :mobile.
+
+  NOTE: client/mobile payloads are served to world-readable SDK keys (embedded in
+  browser/app bundles). We prune the segment map down to only the segments actually
+  referenced by the flags emitted in that payload — sensitive targeting definitions
+  (e.g. an internal "vip_customers" segment keyed on PII) must live on server-only
+  keys, not leak to every client.
+  """
   def ruleset_payload(%Environment{} = env, key_kind \\ :server) do
     project_id = Repo.one!(from e in Environment, where: e.id == ^env.id, select: e.project_id)
-    segments = Segments.segment_map(project_id)
+    all_segments = Segments.segment_map(project_id)
 
     base =
       from(fs in FlagEnvironmentSetting,
@@ -121,8 +130,72 @@ defmodule Flare.Flags do
 
     flags = query |> Repo.all() |> Enum.map(&to_flag_payload/1)
 
+    segments =
+      if key_kind in [:client, :mobile] do
+        referenced = referenced_segments(flags, all_segments)
+        Map.take(all_segments, MapSet.to_list(referenced))
+      else
+        all_segments
+      end
+
     %{"version" => env.ruleset_version, "flags" => flags, "segments" => segments}
   end
+
+  # Worklist/closure over segment references: seed from every emitted flag's rules,
+  # then expand by scanning each newly-referenced segment's own rules for further
+  # segment refs (segments can reference segments), until no new keys are found.
+  defp referenced_segments(flags, all_segments) do
+    seed =
+      flags
+      |> Enum.flat_map(fn flag -> collect_segment_refs(flag["rules"]) end)
+      |> MapSet.new()
+
+    expand_segment_refs(seed, MapSet.new(), all_segments)
+  end
+
+  defp expand_segment_refs(frontier, seen, all_segments) do
+    new_keys = MapSet.difference(frontier, seen)
+
+    if MapSet.size(new_keys) == 0 do
+      seen
+    else
+      seen = MapSet.union(seen, new_keys)
+
+      next_frontier =
+        new_keys
+        |> Enum.flat_map(&segment_refs_for_key(&1, all_segments))
+        |> MapSet.new()
+
+      expand_segment_refs(next_frontier, seen, all_segments)
+    end
+  end
+
+  defp segment_refs_for_key(key, all_segments) do
+    case Map.fetch(all_segments, key) do
+      {:ok, rules} -> collect_segment_refs(rules)
+      :error -> []
+    end
+  end
+
+  # Walk a rule tree collecting every referenced segment key. Handles the
+  # top-level flag-rule "list" shape (a list of %{"rule" => rule} entries),
+  # boolean condition groups (%{"op" => _, "conditions" => [...]}), segment
+  # leaves (%{"segment" => key}), and attribute leaves (%{"attr" => ...},
+  # ignored).
+  defp collect_segment_refs(%{"list" => entries}) when is_list(entries) do
+    Enum.flat_map(entries, fn
+      %{"rule" => rule} -> collect_segment_refs(rule)
+      _ -> []
+    end)
+  end
+
+  defp collect_segment_refs(%{"op" => _, "conditions" => conditions}) when is_list(conditions) do
+    Enum.flat_map(conditions, &collect_segment_refs/1)
+  end
+
+  defp collect_segment_refs(%{"segment" => key}) when is_binary(key), do: [key]
+  defp collect_segment_refs(%{"attr" => _}), do: []
+  defp collect_segment_refs(_), do: []
 
   defp to_flag_payload(%FlagEnvironmentSetting{feature_flag: flag} = fs) do
     variants =
@@ -195,14 +268,25 @@ defmodule Flare.Flags do
 
     case result do
       {:ok, {new_env, version}} ->
-        RulesetCache.put(new_env, :server)
-        RulesetCache.put(new_env, :client)
+        safe_cache_refresh(new_env)
         Phoenix.PubSub.broadcast(Flare.PubSub, "env:#{env.id}", {:ruleset_updated, version})
         {:ok, version}
 
       {:error, reason} ->
         {:error, reason}
     end
+  end
+
+  # Cache refresh is best-effort: SSE handlers/RulesetCache.get rebuild from the DB
+  # on a cache miss, so a failed refresh self-heals. The broadcast must still fire
+  # even if Redis is down.
+  defp safe_cache_refresh(env) do
+    RulesetCache.put(env, :server)
+    RulesetCache.put(env, :client)
+  rescue
+    e ->
+      Logger.error("[Flags] ruleset cache refresh failed: #{inspect(e)}")
+      :error
   end
 
   defp setting_snapshot(setting) do

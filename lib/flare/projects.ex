@@ -104,9 +104,13 @@ defmodule Flare.Projects do
   defp not_expired?(nil), do: true
   defp not_expired?(%DateTime{} = at), do: DateTime.compare(at, DateTime.utc_now()) == :gt
 
-  defp touch_last_used(%SdkKey{} = sk) do
-    sk
-    |> Ecto.Changeset.change(last_used_at: DateTime.utc_now() |> DateTime.truncate(:microsecond))
-    |> Repo.update()
+  defp touch_last_used(%SdkKey{last_used_at: last} = sk) do
+    now = DateTime.utc_now() |> DateTime.truncate(:microsecond)
+
+    if is_nil(last) or DateTime.diff(now, last, :second) > 300 do
+      sk |> Ecto.Changeset.change(last_used_at: now) |> Repo.update()
+    else
+      {:ok, sk}
+    end
   end
 end
